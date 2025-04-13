@@ -1,14 +1,14 @@
 import React from "react";
 import Navbar from "./components/Navbar";
-import { BrowserRouter, Route, Routes, useLocation } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "./pages/HomePage";
-import SignIn from "./pages/Signin";
 import SignUp from "./pages/SignUp";
 import PrivateRoute from "./components/PrivateRoute";
 import PublicRoute from "./components/PublicRoute";
 import NotesPage from "./pages/NotesPage";
 import ForgotPassword from "./pages/ForgotPassword";
 import FlashcardsViewer from "./pages/FlashcardsViewer";
+import SignIn from "./pages/SignIn";
 
 function App() {
   const location = useLocation();
