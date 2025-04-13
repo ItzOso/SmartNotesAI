@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useAuth } from "../contexts/AuthContext";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "../config/firebase";
@@ -6,6 +6,7 @@ import { db } from "../config/firebase";
 function NoUsagesModal({ isOpen, onClose }) {
   const { currentUser } = useAuth();
   const [timeLeft, setTimeLeft] = useState(null);
+  const modalRef = useRef(null);
 
   useEffect(() => {
     const fetchResetTime = async () => {
@@ -41,10 +42,30 @@ function NoUsagesModal({ isOpen, onClose }) {
     fetchResetTime();
   }, [currentUser.uid]);
 
+  useEffect(() => {
+    // Close modal if clicked outside
+    const handleClickOutside = (event) => {
+      if (modalRef.current && !modalRef.current.contains(event.target)) {
+        onClose();
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
   if (!isOpen) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-      <div className="bg-white border border-gray rounded-2xl shadow-md p-8 max-w-md w-[90%] text-center">
+      <div
+        ref={modalRef}
+        className="bg-white border border-gray rounded-2xl shadow-md p-8 max-w-md w-[90%] text-center"
+      >
         <h2 className="text-2xl font-bold text-text mb-3">
           No more free uses today
         </h2>
