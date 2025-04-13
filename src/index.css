@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+    .btn-primary {
+        @apply bg-primary rounded-xl px-4 py-2 text-white hover:opacity-90 transition-all disabled:opacity-75;
+    }
+    .btn-secondary {
+        @apply bg-white rounded-xl px-4 py-2 text-text border border-gray hover:bg-gray-light
+    }
+    .btn-icon {
+        @apply flex justify-center items-center gap-4
+    }
+    .gradient-bg {
+        @apply bg-gradient-to-r from-blue-400 to-primary;
+      }
+}
