@@ -2,7 +2,7 @@
 
 SmartNotesAI is a modern notes app with built-in AI-powered study tools. Create, edit, and delete notes with ease — then take it a step further by summarizing them or generating flashcards using AI.
 
-🔗 [Live Demo](https://smartnotes-b128a.web.app/)
+🔗 [Live App](https://smartnotes-b128a.web.app/)
 
 ---
 
