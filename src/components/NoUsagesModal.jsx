@@ -26,6 +26,7 @@ function NoUsagesModal({ isOpen, onClose }) {
 
     const updateCountdown = (nextReset) => {
       const now = new Date();
+      nextReset - now;
       const diff = nextReset - now;
 
       if (diff <= 0) {

@@ -16,3 +16,6 @@
         @apply bg-gradient-to-r from-blue-400 to-primary;
       }
 }
+.ql-container, .ql-toolbar {
+    border: none !important
+}

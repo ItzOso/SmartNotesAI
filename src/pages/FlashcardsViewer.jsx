@@ -62,7 +62,7 @@ function FlashcardsViewer() {
   return (
     <div className="mx-auto max-w-3xl text-center mt-16 px-4">
       {/* Title Section */}
-      <h2 className="text-3xl font-bold text-text mb-8">
+      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text mb-8">
         {`${title} Flashcards`}
       </h2>
 

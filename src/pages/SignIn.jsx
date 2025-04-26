@@ -50,10 +50,12 @@ function SignIn() {
   return (
     <div className="text-center mx-auto max-w-md pt-28">
       <div className="space-y-1 mb-6">
-        <div className="flex items-center justify-center gap-2">
-          <FiBookOpen className="text-primary text-5xl" />
-          <p className="text-text font-bold text-3xl">SmartNotes</p>
-        </div>
+        <Link to="/">
+          <div className="flex items-center justify-center gap-2">
+            <FiBookOpen className="text-primary text-5xl" />
+            <p className="text-text font-bold text-3xl">SmartNotes</p>
+          </div>
+        </Link>
         <p className="text-text-light">
           Sign in to access your notes and our powerful study tools
         </p>

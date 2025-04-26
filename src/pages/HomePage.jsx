@@ -8,6 +8,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { createNote, getUserNotes } from "../services/firebaseService";
 import { IoIosAddCircleOutline } from "react-icons/io";
 import { IoSearchOutline } from "react-icons/io5";
+import { formatDate, getPlainText } from "../utils/textHelper";
 
 function HomePage() {
   const { currentUser } = useAuth();
@@ -37,21 +38,6 @@ function HomePage() {
       navigate(`/notes/${noteId}`);
     } catch (error) {
       console.log(error);
-    }
-  };
-
-  const formatDate = (timestamp) => {
-    const dateOption = { year: "numeric", month: "short", day: "numeric" };
-    const timeOption = { hour: "numeric", minute: "numeric" };
-    const timestampDate = timestamp.toDate();
-    const todaysDate = new Date();
-    if (
-      timestampDate.toLocaleString("en-US", dateOption) ===
-      todaysDate.toLocaleString("en-US", dateOption)
-    ) {
-      return timestampDate.toLocaleString("en-US", timeOption);
-    } else {
-      return timestampDate.toLocaleString("en-US", dateOption);
     }
   };
 
@@ -116,7 +102,7 @@ function HomePage() {
                         {note.title}
                       </p>
                       <p className="text-text-light line-clamp-2">
-                        {note.content}
+                        {getPlainText(note.content)}
                       </p>
                     </div>
                     <div className="bg-gray-light border-t border-gray rounded-b-xl p-4">

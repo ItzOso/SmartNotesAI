@@ -13,7 +13,10 @@ import { getIdToken } from "firebase/auth";
 import { IoClose, IoReaderOutline } from "react-icons/io5";
 import { BsCardText } from "react-icons/bs";
 import NoUsagesModal from "../components/NoUsagesModal";
-import { doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, Timestamp } from "firebase/firestore";
+import ReactQuill from "react-quill-new";
+import "react-quill-new/dist/quill.snow.css";
+import { formatDate, getPlainText } from "../utils/textHelper";
 
 function NotesPage() {
   const { id } = useParams();
@@ -73,8 +76,8 @@ function NotesPage() {
     });
   };
 
-  const handleContentChange = (e) => {
-    const newContent = e.target.value;
+  const handleContentChange = (value) => {
+    const newContent = value;
     setNote((prevNote) => {
       return { ...prevNote, content: newContent };
     });
@@ -88,6 +91,10 @@ function NotesPage() {
     try {
       if (currentUser.uid === note.uid) {
         await updateNote(id, { title: note.title, content: note.content });
+        const fakeTimestamp = Timestamp.fromDate(new Date());
+        setNote((prevNote) => {
+          return { ...prevNote, updatedAt: fakeTimestamp };
+        });
         setSaveStatus({ saving: false, message: "Saved!" });
         setTimeout(() => {
           setSaveStatus((prev) => {
@@ -120,7 +127,9 @@ function NotesPage() {
     const userDoc = await getDoc(userRef);
     if (userDoc.exists()) {
       const userData = userDoc.data();
-      if (userData.usagesLeft <= 0) {
+      const lastReset = userData.lastReset?.toDate(); // Convert Firestore timestamp
+      const nextReset = new Date(lastReset.getTime() + 24 * 60 * 60 * 1000);
+      if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
         setShowNoUsages(true);
         setSummarizing(false);
         setSaveStatus((prev) => {
@@ -132,7 +141,7 @@ function NotesPage() {
     try {
       const generateSummary = httpsCallable(functions, "generateSummary");
       const results = await generateSummary({
-        content: note.content,
+        content: getPlainText(note.content),
       });
       const summary = results.data.summary;
 
@@ -142,8 +151,10 @@ function NotesPage() {
         summary,
       });
 
+      const fakeTimestamp = Timestamp.fromDate(new Date());
+
       setNote((prevNote) => {
-        return { ...prevNote, summary };
+        return { ...prevNote, summary, updatedAt: fakeTimestamp };
       });
 
       setShowSummary(true);
@@ -173,19 +184,37 @@ function NotesPage() {
     setSaveStatus((prev) => {
       return { ...prev, saving: true, message: "Saving..." };
     });
+    const userRef = doc(db, "users", currentUser.uid);
+    const userDoc = await getDoc(userRef);
+    if (userDoc.exists()) {
+      const userData = userDoc.data();
+      const lastReset = userData.lastReset?.toDate(); // Convert Firestore timestamp
+      const nextReset = new Date(lastReset.getTime() + 24 * 60 * 60 * 1000);
+      if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
+        setShowNoUsages(true);
+        setIsGeneratingFlashcards(false);
+        setSaveStatus((prev) => {
+          return { ...prev, saving: false, message: "" };
+        });
+        return;
+      }
+    }
     try {
       const generateFlashcards = httpsCallable(functions, "generateFlashcards");
       const results = await generateFlashcards({
-        content: note.content,
+        content: getPlainText(note.content),
       });
       const flashcards = results.data.flashcards;
+
       await updateNote(id, {
         title: note.title,
         content: note.content,
         flashcards,
       });
+      const fakeTimestamp = Timestamp.fromDate(new Date());
+
       setNote((prevNote) => {
-        return { ...prevNote, flashcards };
+        return { ...prevNote, flashcards, updatedAt: fakeTimestamp };
       });
       window.open(`/flashcards/${id}`, "_blank");
       setNoteChanged(false);
@@ -231,8 +260,12 @@ function NotesPage() {
           <span>Back to notes</span>
         </Link>
         <div className="justify-center flex items-center gap-2">
-          {saveStatus.message && (
+          {saveStatus.message ? (
             <p className="text-text-light">{saveStatus.message}</p>
+          ) : (
+            <p className="text-text-light">{`Last saved ${formatDate(
+              note?.updatedAt
+            )}`}</p>
           )}
           <button onClick={handleSave} className="btn-primary btn-icon">
             {saveStatus.saving ? (
@@ -285,7 +318,19 @@ function NotesPage() {
           onChange={handleTitleChange}
           className="text-3xl font-bold outline-none text-text"
         />
-        <textarea
+        <div
+          className={`h-[500px] ${
+            fullscreen ? "h-[545px]" : ""
+          } overflow-hidden`}
+        >
+          <ReactQuill
+            theme="snow"
+            value={note?.content}
+            onChange={handleContentChange}
+            className="h-full"
+          />
+        </div>
+        {/* <textarea
           name=""
           id=""
           value={note?.content}
@@ -294,7 +339,7 @@ function NotesPage() {
           className={`outline-none resize-none h-[500px] ${
             fullscreen && "h-[545px]"
           } `}
-        ></textarea>
+        ></textarea> */}
 
         {showSummary && note.summary && (
           <div className="mt-4 p-4 border border-gray rounded-lg bg-gray-100">
