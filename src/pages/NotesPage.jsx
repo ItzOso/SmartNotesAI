@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GoArrowLeft } from "react-icons/go";
 import { FiSave } from "react-icons/fi";
 import { RiExpandDiagonalLine, RiFileTextLine } from "react-icons/ri";
@@ -34,6 +34,16 @@ function NotesPage() {
   const [showNoUsages, setShowNoUsages] = useState(false);
 
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
+
+  const summaryRef = useRef(null);
+
+  useEffect(() => {
+    if (showSummary) {
+      summaryRef.current.scrollIntoView({
+        behavior: "smooth", // Smooth scroll
+      });
+    }
+  }, [showSummary]);
 
   useEffect(() => {
     const fetchNote = async () => {
@@ -342,7 +352,10 @@ function NotesPage() {
         ></textarea> */}
 
         {showSummary && note.summary && (
-          <div className="mt-4 p-4 border border-gray rounded-lg bg-gray-100">
+          <div
+            ref={summaryRef}
+            className="mt-4 p-4 border border-gray rounded-lg bg-gray-100"
+          >
             <div className="flex flex-col-reverse min-[520px]:flex-row justify-between items-center">
               <h3 className="text-lg font-bold text-text">Summary:</h3>
               <div className="flex gap-2">
@@ -403,7 +416,7 @@ function NotesPage() {
             ) : (
               <AiOutlineEdit className="text-lg" />
             )}
-            <span>{note.summary ? "Regenerate Summary" : "Summarize"}</span>
+            <span>Summarize</span>
           </button>
         )}
 
