@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useEffect } from "react";
 import Navbar from "./components/Navbar";
 import { Navigate, Route, Routes, useLocation } from "react-router-dom";
 import HomePage from "./pages/HomePage";
@@ -17,6 +17,7 @@ function App() {
   const location = useLocation();
   const hideNavbar = ["/signin", "/signup"].includes(location.pathname);
   const { currentUser } = useAuth();
+
   return (
     <div className="container mx-auto px-4 sm:px-6 lg:px-8 ">
       {!hideNavbar && <Navbar />}

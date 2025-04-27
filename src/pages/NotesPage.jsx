@@ -17,6 +17,7 @@ import { doc, getDoc, Timestamp } from "firebase/firestore";
 import ReactQuill from "react-quill-new";
 import "react-quill-new/dist/quill.snow.css";
 import { formatDate, getPlainText } from "../utils/textHelper";
+import { toast } from "react-toastify";
 
 function NotesPage() {
   const { id } = useParams();
@@ -29,13 +30,37 @@ function NotesPage() {
 
   const [summarizing, setSummarizing] = useState(false);
   const [showSummary, setShowSummary] = useState(false);
-  const [noteChanged, setNoteChanged] = useState(false);
 
   const [showNoUsages, setShowNoUsages] = useState(false);
 
   const [isGeneratingFlashcards, setIsGeneratingFlashcards] = useState(false);
 
   const summaryRef = useRef(null);
+
+  const refreshNote = async () => {
+    try {
+      const updatedNote = await getNote(id);
+      if (updatedNote) {
+        setNote(updatedNote);
+      }
+    } catch (error) {
+      console.log("Error refreshing note:", error);
+    }
+  };
+
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshNote();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (showSummary) {
@@ -91,7 +116,6 @@ function NotesPage() {
     setNote((prevNote) => {
       return { ...prevNote, content: newContent };
     });
-    setNoteChanged(newContent.trim() !== note.summary);
   };
 
   const handleSave = async () => {
@@ -133,18 +157,27 @@ function NotesPage() {
     setSaveStatus((prev) => {
       return { ...prev, saving: true, message: "Saving..." };
     });
+
     const userRef = doc(db, "users", currentUser.uid);
     const userDoc = await getDoc(userRef);
+    let userData;
     if (userDoc.exists()) {
-      const userData = userDoc.data();
+      userData = userDoc.data();
       const lastReset = userData.lastReset?.toDate(); // Convert Firestore timestamp
       const nextReset = new Date(lastReset.getTime() + 24 * 60 * 60 * 1000);
       if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
         setShowNoUsages(true);
-        setSummarizing(false);
-        setSaveStatus((prev) => {
-          return { ...prev, saving: false, message: "" };
+        await updateNote(id, {
+          title: note.title,
+          content: note.content,
         });
+        setSaveStatus({ saving: false, message: "Saved!" });
+        setTimeout(() => {
+          setSaveStatus((prev) => {
+            return { ...prev, message: "" };
+          });
+        }, 2000);
+        setSummarizing(false);
         return;
       }
     }
@@ -168,9 +201,12 @@ function NotesPage() {
       });
 
       setShowSummary(true);
-      setNoteChanged(false);
 
       setSaveStatus({ saving: false, message: "Saved!" });
+
+      toast.success(
+        `Summary generated! ${userData.usagesLeft - 1} credits remaining.`
+      );
     } catch (error) {
       // no more usages left
       console.log(error.code);
@@ -194,53 +230,107 @@ function NotesPage() {
     setSaveStatus((prev) => {
       return { ...prev, saving: true, message: "Saving..." };
     });
-    const userRef = doc(db, "users", currentUser.uid);
-    const userDoc = await getDoc(userRef);
-    if (userDoc.exists()) {
-      const userData = userDoc.data();
-      const lastReset = userData.lastReset?.toDate(); // Convert Firestore timestamp
-      const nextReset = new Date(lastReset.getTime() + 24 * 60 * 60 * 1000);
-      if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
-        setShowNoUsages(true);
-        setIsGeneratingFlashcards(false);
-        setSaveStatus((prev) => {
-          return { ...prev, saving: false, message: "" };
-        });
-        return;
-      }
-    }
     try {
-      const generateFlashcards = httpsCallable(functions, "generateFlashcards");
-      const results = await generateFlashcards({
-        content: getPlainText(note.content),
-      });
-      const flashcards = results.data.flashcards;
-
+      const userRef = doc(db, "users", currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const lastReset = userData.lastReset?.toDate(); // Convert Firestore timestamp
+        const nextReset = new Date(lastReset.getTime() + 24 * 60 * 60 * 1000);
+        if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
+          setShowNoUsages(true);
+          await updateNote(id, {
+            title: note.title,
+            content: note.content,
+          });
+          const fakeTimestamp = Timestamp.fromDate(new Date());
+          setNote((prevNote) => {
+            return { ...prevNote, updatedAt: fakeTimestamp };
+          });
+          setSaveStatus({ saving: false, message: "Saved!" });
+          setTimeout(() => {
+            setSaveStatus((prev) => {
+              return { ...prev, message: "" };
+            });
+          }, 2000);
+          setIsGeneratingFlashcards(false);
+          return;
+        }
+      }
       await updateNote(id, {
         title: note.title,
         content: note.content,
-        flashcards,
       });
       const fakeTimestamp = Timestamp.fromDate(new Date());
-
       setNote((prevNote) => {
-        return { ...prevNote, flashcards, updatedAt: fakeTimestamp };
+        return { ...prevNote, updatedAt: fakeTimestamp };
       });
-      window.open(`/flashcards/${id}`, "_blank");
-      setNoteChanged(false);
       setSaveStatus({ saving: false, message: "Saved!" });
-    } catch (error) {
-      console.log("Error generating flashcards", error);
-      setSaveStatus({ saving: false, message: "Couldnt Save." });
-    } finally {
       setTimeout(() => {
         setSaveStatus((prev) => {
           return { ...prev, message: "" };
         });
       }, 2000);
+      window.open(`/flashcards/${id}`, "_blank");
+    } catch (error) {
+      console.log("Error preparing flashcard viewer:", error);
+    } finally {
+      setSaveStatus({ saving: false, message: "" });
       setIsGeneratingFlashcards(false);
     }
   };
+
+  // const handleCreateFlashcards = async () => {
+  //   setIsGeneratingFlashcards(true);
+  //   setSaveStatus((prev) => {
+  //     return { ...prev, saving: true, message: "Saving..." };
+  //   });
+  //   const userRef = doc(db, "users", currentUser.uid);
+  //   const userDoc = await getDoc(userRef);
+  //   if (userDoc.exists()) {
+  //     const userData = userDoc.data();
+  //     const lastReset = userData.lastReset?.toDate(); // Convert Firestore timestamp
+  //     const nextReset = new Date(lastReset.getTime() + 24 * 60 * 60 * 1000);
+  //     if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
+  //       setShowNoUsages(true);
+  //       setIsGeneratingFlashcards(false);
+  //       setSaveStatus((prev) => {
+  //         return { ...prev, saving: false, message: "" };
+  //       });
+  //       return;
+  //     }
+  //   }
+  //   try {
+  //     const generateFlashcards = httpsCallable(functions, "generateFlashcards");
+  //     const results = await generateFlashcards({
+  //       content: getPlainText(note.content),
+  //     });
+  //     const flashcards = results.data.flashcards;
+
+  //     await updateNote(id, {
+  //       title: note.title,
+  //       content: note.content,
+  //       flashcards,
+  //     });
+  //     const fakeTimestamp = Timestamp.fromDate(new Date());
+
+  //     setNote((prevNote) => {
+  //       return { ...prevNote, flashcards, updatedAt: fakeTimestamp };
+  //     });
+  //     window.open(`/flashcards/${id}`, "_blank");
+  //     setSaveStatus({ saving: false, message: "Saved!" });
+  //   } catch (error) {
+  //     console.log("Error generating flashcards", error);
+  //     setSaveStatus({ saving: false, message: "Couldnt Save." });
+  //   } finally {
+  //     setTimeout(() => {
+  //       setSaveStatus((prev) => {
+  //         return { ...prev, message: "" };
+  //       });
+  //     }, 2000);
+  //     setIsGeneratingFlashcards(false);
+  //   }
+  // };
 
   if (loading) {
     return (
@@ -359,22 +449,35 @@ function NotesPage() {
             <div className="flex flex-col-reverse min-[520px]:flex-row justify-between items-center">
               <h3 className="text-lg font-bold text-text">Summary:</h3>
               <div className="flex gap-2">
-                <button
-                  onClick={handleCreateSummary}
-                  disabled={
-                    !note.content.trim() ||
-                    summarizing ||
-                    (note.summary && !noteChanged)
-                  }
-                  className="btn-primary btn-icon"
-                >
-                  {summarizing ? (
-                    <AiOutlineLoading3Quarters className="animate-spin" />
-                  ) : (
-                    <AiOutlineEdit className="text-lg" />
+                <div className="relative group inline-block">
+                  <button
+                    onClick={handleCreateSummary}
+                    disabled={
+                      !note.content.trim() ||
+                      summarizing ||
+                      note.content.trim().split(/\s+/).length < 50
+                    }
+                    className={`btn-primary btn-icon ${
+                      note.content.trim().split(/\s+/).length < 50
+                        ? "opacity-50 cursor-not-allowed"
+                        : "hover:bg-primary-dark"
+                    }`}
+                  >
+                    {summarizing ? (
+                      <AiOutlineLoading3Quarters className="animate-spin" />
+                    ) : (
+                      <AiOutlineEdit className="text-lg" />
+                    )}
+                    <span>Summarize</span>
+                  </button>
+
+                  {/* Tooltip */}
+                  {note.content.trim().split(/\s+/).length < 50 && (
+                    <div className="absolute left-1/2 pointer-events-none -top-10 transform -translate-x-1/2 bg-text-light text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                      Requires at least 50 words
+                    </div>
                   )}
-                  <span>Regenerate Summary</span>
-                </button>
+                </div>
                 {/* <button
                   onClick={() => setShowSummary(false)}
                   className="btn-secondary"
@@ -401,23 +504,36 @@ function NotesPage() {
             <span>{showSummary ? "Close Summary" : "View Summary"}</span>
           </button>
         ) : (
-          <button
-            onClick={handleCreateSummary}
-            disabled={
-              !note.content.trim() ||
-              summarizing ||
-              (note.summary && !noteChanged) ||
-              note.content.trim().split(/\s+/).length < 50
-            }
-            className="btn-primary btn-icon"
-          >
-            {summarizing ? (
-              <AiOutlineLoading3Quarters className="animate-spin" />
-            ) : (
-              <AiOutlineEdit className="text-lg" />
+          <div className="relative group inline-block">
+            <button
+              onClick={handleCreateSummary}
+              disabled={
+                !note.content.trim() ||
+                summarizing ||
+                note.summary ||
+                note.content.trim().split(/\s+/).length < 50
+              }
+              className={`btn-primary btn-icon ${
+                note.content.trim().split(/\s+/).length < 50
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:bg-primary-dark"
+              }`}
+            >
+              {summarizing ? (
+                <AiOutlineLoading3Quarters className="animate-spin" />
+              ) : (
+                <AiOutlineEdit className="text-lg" />
+              )}
+              <span>Summarize</span>
+            </button>
+
+            {/* Tooltip */}
+            {note.content.trim().split(/\s+/).length < 50 && (
+              <div className="absolute left-1/2 pointer-events-none -top-10 transform -translate-x-1/2 bg-text-light text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                Requires at least 50 words
+              </div>
             )}
-            <span>Summarize</span>
-          </button>
+          </div>
         )}
 
         {note.flashcards.length ? (
@@ -429,22 +545,32 @@ function NotesPage() {
             <span>View Flashcards</span>
           </button>
         ) : (
-          <button
-            onClick={handleCreateFlashcards}
-            disabled={
-              !note.content.trim() ||
-              isGeneratingFlashcards ||
-              note.content.trim().split(/\s+/).length < 70
-            }
-            className="btn-primary btn-icon"
-          >
-            {isGeneratingFlashcards ? (
-              <AiOutlineLoading3Quarters className="animate-spin" />
-            ) : (
-              <BsCardText className="text-lg" />
-            )}
-            <span>Generate Flashcards</span>
-          </button>
+          <div className="relative inline-block">
+            <button
+              onClick={handleCreateFlashcards}
+              disabled={
+                !note.content.trim() ||
+                isGeneratingFlashcards ||
+                note.content.trim().split(/\s+/).length < 70
+              }
+              className="group btn-primary btn-icon"
+            >
+              {isGeneratingFlashcards ? (
+                <AiOutlineLoading3Quarters className="animate-spin" />
+              ) : (
+                <BsCardText className="text-lg" />
+              )}
+              <span>Generate Flashcards</span>
+
+              {/* Tooltip inside the button */}
+              {!isGeneratingFlashcards &&
+                note.content.trim().split(/\s+/).length < 70 && (
+                  <div className="absolute left-1/2 -top-10 transform -translate-x-1/2 bg-black text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                    Requires at least 70 words
+                  </div>
+                )}
+            </button>
+          </div>
         )}
 
         {/* <button

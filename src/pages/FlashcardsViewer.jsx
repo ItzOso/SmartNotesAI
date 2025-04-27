@@ -1,8 +1,14 @@
 import React, { useActionState, useEffect, useState } from "react";
-import { getNote } from "../services/firebaseService";
+import { getNote, updateNote } from "../services/firebaseService";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import ReactFlipCard from "reactjs-flip-card";
 import { GoArrowLeft } from "react-icons/go";
+import { httpsCallable } from "firebase/functions";
+import { db, functions } from "../config/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { useAuth } from "../contexts/AuthContext";
+import { getPlainText } from "../utils/textHelper";
+import { toast } from "react-toastify";
 
 function FlashcardsViewer() {
   const navigate = useNavigate();
@@ -12,20 +18,50 @@ function FlashcardsViewer() {
   const [flashcards, setFlashcards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
+  const { currentUser } = useAuth();
 
+  let hasGenerated = false;
   useEffect(() => {
     const fetchNote = async () => {
       setLoading(true);
       try {
         const noteData = await getNote(id);
-        if (noteData) {
-          setTitle(noteData.title);
-          setFlashcards(noteData.flashcards);
-        } else {
+        if (!noteData) {
           navigate("/");
         }
+
+        if (noteData.flashcards.length > 0) {
+          // flashcards exist, load them
+          setTitle(noteData.title);
+          setFlashcards(noteData.flashcards);
+        } else if (!hasGenerated) {
+          // no flashcards, generate them
+          hasGenerated = true;
+
+          const generateFlashcards = httpsCallable(
+            functions,
+            "generateFlashcards"
+          );
+          const results = await generateFlashcards({
+            content: getPlainText(noteData.content),
+          });
+          const flashcards = results.data.flashcards;
+
+          await updateNote(id, { flashcards }); // Save them to the note
+
+          setFlashcards(flashcards);
+
+          // show many credits left
+          const userRef = doc(db, "users", currentUser.uid);
+          const userDoc = await getDoc(userRef);
+          const userData = userDoc.data();
+
+          toast.success(
+            `Flashcards generated! You have ${userData.usagesLeft} credits left.`
+          );
+        }
       } catch (error) {
-        console.log(error);
+        console.log("Error in flashcards viwer:", error);
         navigate("/");
       }
       setLoading(false);
@@ -47,7 +83,7 @@ function FlashcardsViewer() {
     }
   };
 
-  if (loading) {
+  if (loading || flashcards.length === 0) {
     return (
       <div className="flex items-center justify-center h-full">
         <div
@@ -63,7 +99,7 @@ function FlashcardsViewer() {
     <div className="mx-auto max-w-3xl text-center mt-16 px-4">
       {/* Title Section */}
       <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text mb-8">
-        {`${title} Flashcards`}
+        {`${title || "Untitled Note"} Flashcards`}
       </h2>
 
       {/* Flashcard Display Section */}

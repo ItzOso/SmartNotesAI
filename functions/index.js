@@ -36,7 +36,7 @@ export const generateSummary = functions.https.onCall(async (request) => {
     const MAX_DAILY_USAGES = 5;
     const HOURS_24 = 24 * 60 * 60 * 1000;
 
-    if (userData.usagesLeft === 0) {
+    if (userData.usagesLeft <= 0) {
       const lastReset = userData.lastReset?.toMillis?.() ?? 0;
 
       if (Date.now() - lastReset >= HOURS_24) {
@@ -138,7 +138,7 @@ export const generateFlashcards = functions.https.onCall(async (request) => {
     const MAX_DAILY_USAGES = 5;
     const HOURS_24 = 24 * 60 * 60 * 1000;
 
-    if (userData.usagesLeft === 0) {
+    if (userData.usagesLeft <= 0) {
       const lastReset = userData.lastReset?.toMillis?.() ?? 0;
 
       if (Date.now() - lastReset >= HOURS_24) {
