@@ -204,6 +204,7 @@ function NotesPage() {
 
       setSaveStatus({ saving: false, message: "Saved!" });
 
+      // if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
       toast.success(
         `Summary generated! ${userData.usagesLeft - 1} credits remaining.`
       );
@@ -347,9 +348,9 @@ function NotesPage() {
 
   return (
     <div
-      className={`mx-auto ${
+      className={`mx-auto  ${
         fullscreen ? "fixed inset-0 bg-white p-6 z-50" : "max-w-4xl"
-      }`}
+      } ${showSummary && "overflow-auto"}`}
     >
       <div className="min-[430px]:flex justify-between mb-4">
         <Link
