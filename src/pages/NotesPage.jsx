@@ -335,9 +335,9 @@ function NotesPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
+      <div className="flex items-center justify-center h-screen">
         <div
-          className="animate-spin inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+          className="animate-spin inline-block w-12 h-12 border-4 -mt-[128px] border-primary border-t-transparent rounded-full"
           role="status"
         >
           <span className="sr-only">Loading...</span>
