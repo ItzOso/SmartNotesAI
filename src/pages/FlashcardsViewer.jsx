@@ -9,16 +9,62 @@ import { doc, getDoc } from "firebase/firestore";
 import { useAuth } from "../contexts/AuthContext";
 import { getPlainText } from "../utils/textHelper";
 import { toast } from "react-toastify";
+import { AiOutlineLoading3Quarters } from "react-icons/ai";
+import { BsCardText } from "react-icons/bs";
+import NoUsagesModal from "../components/NoUsagesModal";
 
 function FlashcardsViewer() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
-  const [title, setTitle] = useState("");
   const [flashcards, setFlashcards] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showAnswer, setShowAnswer] = useState(false);
   const { currentUser } = useAuth();
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [note, setNote] = useState(null);
+  const [showNoUsages, setShowNoUsages] = useState(false);
+
+  const handleGenerateFlashcards = async (content) => {
+    setIsGenerating(true);
+    try {
+      console.log(content);
+      let currentContent;
+      if (content) {
+        currentContent = content;
+      } else {
+        const noteData = await getNote(id);
+        console.log("Re fetched data:", noteData);
+        currentContent = noteData.content;
+      }
+      const generateFlashcards = httpsCallable(functions, "generateFlashcards");
+      const results = await generateFlashcards({
+        content: getPlainText(currentContent),
+      });
+      const flashcards = results.data.flashcards;
+
+      await updateNote(id, { flashcards }); // Save them to the note
+
+      setFlashcards(flashcards);
+
+      // show many credits left
+      const userRef = doc(db, "users", currentUser.uid);
+      const userDoc = await getDoc(userRef);
+      const userData = userDoc.data();
+
+      toast.success(
+        `Flashcards generated! You have ${userData.usagesLeft} credits left.`
+      );
+    } catch (error) {
+      if (error.code === "functions/resource-exhausted") {
+        setShowNoUsages(true);
+      } else {
+        console.log("Error in flashcards viwer:", error);
+        navigate("/");
+      }
+    }
+    setIsGenerating(false);
+  };
 
   let hasGenerated = false;
   useEffect(() => {
@@ -32,37 +78,22 @@ function FlashcardsViewer() {
 
         if (noteData.flashcards.length > 0) {
           // flashcards exist, load them
-          setTitle(noteData.title);
+          setNote(noteData);
           setFlashcards(noteData.flashcards);
         } else if (!hasGenerated) {
           // no flashcards, generate them
           hasGenerated = true;
 
-          const generateFlashcards = httpsCallable(
-            functions,
-            "generateFlashcards"
-          );
-          const results = await generateFlashcards({
-            content: getPlainText(noteData.content),
-          });
-          const flashcards = results.data.flashcards;
-
-          await updateNote(id, { flashcards }); // Save them to the note
-
-          setFlashcards(flashcards);
-
-          // show many credits left
-          const userRef = doc(db, "users", currentUser.uid);
-          const userDoc = await getDoc(userRef);
-          const userData = userDoc.data();
-
-          toast.success(
-            `Flashcards generated! You have ${userData.usagesLeft} credits left.`
-          );
+          handleGenerateFlashcards(noteData.content);
         }
       } catch (error) {
-        console.log("Error in flashcards viwer:", error);
-        navigate("/");
+        console.log(error.code);
+        if (error.code === "functions/resource-exhausted") {
+          setShowNoUsages(true);
+        } else {
+          console.log("Error in flashcards viwer:", error);
+          navigate("/");
+        }
       }
       setLoading(false);
     };
@@ -96,11 +127,38 @@ function FlashcardsViewer() {
     );
   }
   return (
-    <div className="mx-auto max-w-3xl text-center mt-16 px-4">
+    <div className="mx-auto max-w-3xl text-center mt-16 px-4 ">
       {/* Title Section */}
-      <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text mb-8">
-        {`${title || "Untitled Note"} Flashcards`}
-      </h2>
+      <div className="flex justify-between items-center mb-8 gap-8">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text">
+          {`${note?.title || "Untitled Note"} Flashcards`}
+        </h2>
+        <div className="relative inline-block">
+          <button
+            onClick={() => handleGenerateFlashcards()}
+            disabled={
+              !note.content.trim() ||
+              isGenerating ||
+              note.content.trim().split(/\s+/).length < 70
+            }
+            className="group btn-primary btn-icon"
+          >
+            {isGenerating ? (
+              <AiOutlineLoading3Quarters className="animate-spin" />
+            ) : (
+              <BsCardText className="text-lg" />
+            )}
+            <span>Regenerate Flashcards</span>
+
+            {/* Tooltip inside the button */}
+            {!isGenerating && note.content.trim().split(/\s+/).length < 70 && (
+              <div className="absolute left-1/2 -top-10 transform -translate-x-1/2 bg-black text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
+                Requires at least 70 words
+              </div>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Flashcard Display Section */}
       <div
@@ -108,11 +166,20 @@ function FlashcardsViewer() {
         className="border cursor-pointer shadow border-gray rounded-xl p-6 mx-auto flex justify-center items-center h-[380px]"
       >
         <div className="text-2xl text-text text-center">
-          <p>
-            {!showAnswer
-              ? flashcards[currentIndex].question
-              : flashcards[currentIndex].answer}
-          </p>
+          {isGenerating ? (
+            <div
+              className="animate-spin inline-block w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+              role="status"
+            >
+              <span className="sr-only">Loading...</span>
+            </div>
+          ) : (
+            <p>
+              {!showAnswer
+                ? flashcards[currentIndex].question
+                : flashcards[currentIndex].answer}
+            </p>
+          )}
         </div>
       </div>
 
@@ -128,6 +195,10 @@ function FlashcardsViewer() {
           Next
         </button>
       </div>
+      <NoUsagesModal
+        isOpen={showNoUsages}
+        onClose={() => setShowNoUsages(false)}
+      />
     </div>
   );
 }
