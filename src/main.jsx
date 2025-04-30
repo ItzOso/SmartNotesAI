@@ -4,7 +4,7 @@ import "./index.css";
 import App from "./App.jsx";
 import { AuthProvider } from "./contexts/AuthContext.jsx";
 import { BrowserRouter } from "react-router-dom";
-import { ToastContainer, toast } from "react-toastify";
+import { Slide, ToastContainer, Zoom, toast } from "react-toastify";
 
 createRoot(document.getElementById("root")).render(
   <StrictMode>
@@ -23,6 +23,7 @@ createRoot(document.getElementById("root")).render(
           pauseOnHover
           theme="light"
           className={"text-sm"}
+          transition={Slide}
         />
       </BrowserRouter>
     </AuthProvider>
