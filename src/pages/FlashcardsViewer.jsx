@@ -37,6 +37,13 @@ function FlashcardsViewer() {
         console.log("Re fetched data:", noteData);
         currentContent = noteData.content;
       }
+
+      if (currentContent.trim().split(/\s+/).length < 70) {
+        toast.error(
+          "Notes must have at least 70 words! Refresh page to try again."
+        );
+      }
+
       const generateFlashcards = httpsCallable(functions, "generateFlashcards");
       const results = await generateFlashcards({
         content: getPlainText(currentContent),
@@ -58,6 +65,10 @@ function FlashcardsViewer() {
     } catch (error) {
       if (error.code === "functions/resource-exhausted") {
         setShowNoUsages(true);
+      } else if (error.code === "functions/invalid-argument") {
+        toast.error(
+          "Notes must have at least 70 words! Refresh page to try again."
+        );
       } else {
         console.log("Error in flashcards viwer:", error);
         navigate("/");
