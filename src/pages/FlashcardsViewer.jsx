@@ -140,8 +140,8 @@ function FlashcardsViewer() {
   return (
     <div className="mx-auto max-w-3xl text-center mt-16 px-4 ">
       {/* Title Section */}
-      <div className="flex justify-between items-center mb-8 gap-8">
-        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text">
+      <div className="flex flex-col-reverse sm:flex-row justify-between items-center mb-8 gap-8">
+        <h2 className="text-xl sm:text-2xl md:text-3xl font-bold text-text line-clamp-2 sm:line-clamp-1">
           {`${note?.title || "Untitled Note"} Flashcards`}
         </h2>
         <div className="relative inline-block">
@@ -152,7 +152,7 @@ function FlashcardsViewer() {
               isGenerating ||
               note.content.trim().split(/\s+/).length < 70
             }
-            className="group btn-primary btn-icon"
+            className="group btn-primary btn-icon whitespace-nowrap"
           >
             {isGenerating ? (
               <AiOutlineLoading3Quarters className="animate-spin" />
@@ -195,14 +195,20 @@ function FlashcardsViewer() {
       </div>
 
       {/* Navigation Section */}
-      <div className="flex justify-between items-center mt-6">
-        <button onClick={handlePrevious} className="btn-primary text-lg">
+      <div className="flex flex-col sm:flex-row justify-between items-center mt-6 gap-2">
+        <button
+          onClick={handlePrevious}
+          className="btn-primary text-lg order-2 w-full sm:order-1 sm:w-fit"
+        >
           Previous
         </button>
-        <div className="text-lg text-text-light">
+        <div className="text-lg text-text-light order-1 sm:order-2">
           <span>{`${currentIndex + 1} / ${flashcards.length}`}</span>
         </div>
-        <button onClick={handleNext} className="btn-primary text-lg">
+        <button
+          onClick={handleNext}
+          className="btn-primary text-lg order-3 w-full mb-6 sm:w-fit sm:mb-0"
+        >
           Next
         </button>
       </div>

@@ -350,7 +350,7 @@ function NotesPage() {
     <div
       className={`mx-auto  ${
         fullscreen ? "fixed inset-0 bg-white p-6 z-50" : "max-w-4xl"
-      } ${showSummary && "overflow-auto"}`}
+      } overflow-auto`}
     >
       <div className="min-[430px]:flex justify-between mb-4">
         <Link
