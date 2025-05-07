@@ -206,7 +206,9 @@ function NotesPage() {
 
       // if (userData.usagesLeft <= 0 && nextReset - new Date() >= 0) {
       toast.success(
-        `Summary generated! ${userData.usagesLeft - 1} credits remaining.`
+        `Summary generated! ${
+          userData.usagesLeft == -1 ? "4" : userData.usagesLeft - 1
+        } credits remaining.`
       );
     } catch (error) {
       // no more usages left

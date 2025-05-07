@@ -148,9 +148,9 @@ function FlashcardsViewer() {
           <button
             onClick={() => handleGenerateFlashcards()}
             disabled={
-              !note.content.trim() ||
+              !note?.content.trim() ||
               isGenerating ||
-              note.content.trim().split(/\s+/).length < 70
+              note?.content.trim().split(/\s+/).length < 70
             }
             className="group btn-primary btn-icon whitespace-nowrap"
           >
@@ -162,7 +162,7 @@ function FlashcardsViewer() {
             <span>Regenerate Flashcards</span>
 
             {/* Tooltip inside the button */}
-            {!isGenerating && note.content.trim().split(/\s+/).length < 70 && (
+            {!isGenerating && note?.content.trim().split(/\s+/).length < 70 && (
               <div className="absolute left-1/2 -top-10 transform -translate-x-1/2 bg-black text-white text-xs rounded py-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none">
                 Requires at least 70 words
               </div>
