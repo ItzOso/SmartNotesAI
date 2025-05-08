@@ -101,11 +101,11 @@ export const AuthProvider = ({ children }) => {
         password
       );
       const user = userCredentials.user;
-      const usersRef = collection(db, "users");
-      await addDoc(usersRef, {
+      const userRef = doc(db, "users", user.uid);
+      await setDoc(userRef, {
         uid: user.uid,
         email: user.email,
-        usagesLeft: 4,
+        usagesLeft: 5,
         lastReset: serverTimestamp(),
       });
     } catch (error) {
@@ -142,9 +142,10 @@ export const AuthProvider = ({ children }) => {
       const provider = new GoogleAuthProvider();
       const userCredentials = await signInWithPopup(auth, provider);
       const user = userCredentials.user;
-      const userDoc = await getDoc(doc(db, "users", user.uid));
+      const userRef = doc(db, "users", user.uid);
+      const userDoc = await getDoc(userRef);
       if (!userDoc.exists()) {
-        await setDoc(doc(db, "users", user.uid), {
+        await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
           usagesLeft: 5,
